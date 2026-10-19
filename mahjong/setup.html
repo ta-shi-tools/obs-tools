@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雀魂 段位ptカウンター 設定</title>
+<style>
+  :root { --bg: #f6f5fa; --card: #fff; --fg: #222; --muted: #666; --line: #ddd; --accent: #b8860b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #16161c; --card: #22222a; --fg: #eee; --muted: #aaa; --line: #3a3a44; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 "BIZ UDPGothic", "Meiryo", sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card + .card { margin-top: 20px; }
+  label { display: block; font-weight: 700; font-size: 13px; margin: 12px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+  iframe { width: 100%; height: 300px; border: 0; border-radius: 8px; display: block; }
+  .ctrl { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  textarea { width: 100%; height: 76px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: 12px/1.5 Consolas, monospace; resize: vertical; }
+  .note { font-size: 13px; color: var(--muted); }
+  ol { padding-left: 1.3em; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>雀魂 段位ptカウンター 設定（無償版）</h1>
+  <p class="lead">表示用と操作パネル用、2つのURLをOBSに登録してください。段位・卓・東風/半荘などは、操作パネル側で設定します。</p>
+
+  <div class="grid">
+    <form class="card" id="form" onsubmit="return false">
+      <label for="label">見出し</label>
+      <input id="label" value="雀魂 段位戦">
+      <label for="theme">デザイン</label>
+      <select id="theme">
+        <option value="pop">和風（白）</option>
+        
+      </select>
+      <label for="size">文字サイズ(px)</label>
+      <input id="size" type="number" min="12" max="200" value="28">
+      <label for="cid">記録ID（アカウントや四麻・三麻で分けたいときは別のIDに）</label>
+      <input id="cid" value="mj1">
+      <p class="note" style="margin-top:14px">無償版は四麻専用です。</p>
+    </form>
+
+    <div>
+      <div class="card">
+        <iframe id="pv" title="プレビュー"></iframe>
+        <p class="note">プレビューは見本の数値です。</p>
+      </div>
+
+      <div class="card">
+        <label for="url">① 表示用URL（ブラウザソース）</label>
+        <textarea id="url" readonly></textarea>
+        <div class="ctrl"><button type="button" class="primary" data-copy="url">URLをコピー</button><span class="note" id="copied"></span></div>
+        <ol class="note">
+          <li>OBSの「ソース」で「＋」→「ブラウザ」を追加</li>
+          <li>「ローカルファイル」のチェックは外したまま、URL欄に貼り付け</li>
+          <li>幅 800／高さ 400 程度にして「OK」</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <label for="purl">② 操作パネル用URL（カスタムブラウザドック）</label>
+        <textarea id="purl" readonly style="height:56px"></textarea>
+        <div class="ctrl"><button type="button" data-copy="purl">URLをコピー</button></div>
+        <ol class="note">
+          <li>OBSのメニュー「ドック」→「カスタムブラウザドック」</li>
+          <li>名前に「段位pt」、URLに貼り付けて「適用」</li>
+          <li>最初に「設定」から、人数・長さ・卓と、ゲーム内の現在の段位・ptを合わせる</li>
+          <li>対局が終わったら、終局時の持ち点を入れて着順ボタンを押すだけ</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const base = new URL('overlay.html', location.href).href;
+  const pv = $('pv');
+  // プレビュー用の見本データ（本番の記録とは別のID）
+  const now = Date.now();
+  const sample = { v: 1, players: 4, length: 'hanchan', table: 'jade', rank: 10, pt: 1648, sessionStart: now - 3600000,
+    games: [1, 3, 2, 4, 1, 2].map((p, i) => ({ t: now - (6 - i) * 600000, place: p, score: 25000, d: [73, -8, 50, -155, 96, 48][i], rankBefore: 10, ptBefore: 1600, event: null })) };
+  try { localStorage.setItem('mj-counter:preview-sample', JSON.stringify(sample)); } catch (e) {}
+
+  function params(preview) {
+    const p = new URLSearchParams();
+    p.set('label', $('label').value);
+    p.set('theme', $('theme').value);
+    p.set('size', $('size').value || '28');
+    p.set('id', preview ? 'preview-sample' : ($('cid').value || 'mj1'));
+    if (preview) p.set('preview', '1');
+    return p.toString();
+  }
+  let timer;
+  function update() {
+    $('url').value = base + '?' + params(false);
+    clearTimeout(timer);
+    timer = setTimeout(() => { pv.src = base + '?' + params(true); }, 250);
+  }
+  $('purl').value = new URL('panel.html', location.href).href;
+  $('form').addEventListener('input', update);
+  document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    const ta = $(b.dataset.copy);
+    try { await navigator.clipboard.writeText(ta.value); } catch (e) { ta.select(); document.execCommand('copy'); }
+    $('copied').textContent = 'コピーしました';
+    setTimeout(() => ($('copied').textContent = ''), 1500);
+  }));
+  update();
+})();
+</script>
+</body>
+</html>

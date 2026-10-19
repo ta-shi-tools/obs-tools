@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>なんでも目標カウンター</title>
+<style>
+  :root {
+    --size: 32px;
+    --fg: #3a2f3a;
+    --sub: #ff5fa2;
+    --accent: #ff5fa2;
+    --track: rgba(255, 95, 162, .18);
+    --panel: rgba(255, 255, 255, .92);
+    --border: 3px solid var(--accent);
+    --glow: none;
+    --radius: .7em;
+    --font: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Meiryo", sans-serif;
+  }
+  [data-theme="simple"] {
+    --fg: #ffffff;
+    --sub: #ffffff;
+    --accent: #ffd400;
+    --track: rgba(255, 255, 255, .3);
+    --panel: transparent;
+    --border: none;
+    --glow: 0 0 2px #000, 0 0 2px #000, 0 0 2px #000, 0 2px 4px rgba(0, 0, 0, .6);
+  }
+  
+  [data-theme="neon"] {
+    --fg: #ffffff;
+    --sub: #7df9ff;
+    --accent: #00e5ff;
+    --track: rgba(0, 229, 255, .18);
+    --panel: rgba(8, 10, 32, .78);
+    --border: 2px solid var(--accent);
+    --glow: 0 0 .15em var(--accent), 0 0 .5em var(--accent);
+  }
+  [data-theme="dark"] {
+    --fg: #f5f5f5;
+    --sub: #b8b8c8;
+    --accent: #8c7bff;
+    --track: rgba(255, 255, 255, .12);
+    --panel: rgba(20, 20, 28, .82);
+    --border: 1px solid rgba(255, 255, 255, .12);
+    --glow: none;
+  }
+
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font-family: var(--font); color: var(--fg); user-select: none; cursor: default; }
+  body.preview-bg { background: #444 repeating-conic-gradient(#555 0 25%, #444 0 50%) 0 0 / 24px 24px; min-height: 100vh; }
+
+  .wrap {
+    display: inline-flex; flex-direction: column; gap: .3em;
+    margin: 16px; padding: .5em .9em .6em;
+    min-width: 7em;
+    font-size: var(--size);
+    background: var(--panel); border: var(--border); border-radius: var(--radius);
+  }
+  .label { font-size: .55em; font-weight: 800; color: var(--sub); letter-spacing: .06em; text-shadow: var(--glow); white-space: nowrap; }
+  .row { display: flex; align-items: baseline; gap: .15em; white-space: nowrap; }
+  .count {
+    display: inline-block; font-size: 2em; font-weight: 900; line-height: 1;
+    font-variant-numeric: tabular-nums; text-shadow: var(--glow); transform-origin: 50% 70%;
+  }
+  .unit { font-size: .7em; font-weight: 700; text-shadow: var(--glow); }
+  .goal { font-size: .7em; font-weight: 700; opacity: .8; text-shadow: var(--glow); margin-left: .2em; }
+  .bar { height: .32em; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--accent); border-radius: inherit; box-shadow: var(--glow); transition: width .45s cubic-bezier(.2, .8, .2, 1); }
+  .hidden { display: none !important; }
+
+  .wrap.done .label::after { content: " ★達成！"; color: var(--accent); }
+  .up { animation: up .35s ease-out; }
+  .dn { animation: dn .3s ease-out; }
+  @keyframes up { 0% { transform: scale(1); } 40% { transform: scale(1.28) rotate(-3deg); } 100% { transform: scale(1); } }
+  @keyframes dn { 0% { transform: translateY(0); } 40% { transform: translateY(.12em); opacity: .6; } 100% { transform: translateY(0); } }
+
+  .toast {
+    position: fixed; left: 16px; bottom: 12px; padding: 4px 10px; border-radius: 6px;
+    font: 700 13px var(--font); color: #fff; background: rgba(0, 0, 0, .7);
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  #fx { position: fixed; inset: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="label" id="label"></div>
+  <div class="row">
+    <span class="count" id="count">0</span><span class="unit" id="unit"></span><span class="goal" id="goal"></span>
+  </div>
+  <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+</div>
+<div class="toast" id="toast"></div>
+<canvas id="fx"></canvas>
+
+<script>
+(() => {
+  // ---- 設定（URLパラメータ） ----
+  const q = new URLSearchParams(location.search);
+  const int = (k, d) => { const n = parseInt(q.get(k), 10); return Number.isFinite(n) ? n : d; };
+  const cfg = {
+    label: q.get('label') ?? 'カウンター',
+    unit: q.get('unit') ?? '',
+    goal: Math.max(0, int('goal', 0)),
+    step: Math.max(1, int('step', 1)),
+    start: int('start', 0),
+    theme: q.get('theme') || 'pop',
+    size: Math.min(200, Math.max(12, int('size', 32))),
+    color: /^[0-9a-fA-F]{3,8}$/.test(q.get('color') || '') ? '#' + q.get('color') : null,
+    id: q.get('id') || 'default',
+    fx: q.get('fx') !== '0',
+    preview: q.get('preview') === '1',
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const wrap = $('wrap'), countEl = $('count');
+  document.documentElement.dataset.theme = cfg.theme;
+  document.documentElement.style.setProperty('--size', cfg.size + 'px');
+  if (cfg.color) document.documentElement.style.setProperty('--accent', cfg.color);
+  if (cfg.preview) document.body.classList.add('preview-bg');
+  $('label').textContent = cfg.label;
+  $('unit').textContent = cfg.unit;
+  $('label').classList.toggle('hidden', !cfg.label);
+  $('goal').classList.toggle('hidden', !cfg.goal);
+  $('bar').classList.toggle('hidden', !cfg.goal);
+  if (cfg.goal) $('goal').textContent = '/ ' + cfg.goal;
+
+  // ---- 保存（使えない環境ではメモリのみ） ----
+  const KEY = 'obs-counter:' + cfg.id;
+  const store = {
+    get() { try { const v = localStorage.getItem(KEY); return v === null ? null : parseInt(v, 10); } catch (e) { return null; } },
+    set(v) { try { localStorage.setItem(KEY, String(v)); } catch (e) {} },
+  };
+  let count = store.get();
+  if (count === null || !Number.isFinite(count)) { count = cfg.start; store.set(count); }
+
+  // ---- 表示 ----
+  function render(dir) {
+    countEl.textContent = count;
+    const done = cfg.goal > 0 && count >= cfg.goal;
+    wrap.classList.toggle('done', done);
+    if (cfg.goal) $('fill').style.width = Math.min(100, Math.max(0, count / cfg.goal * 100)) + '%';
+    if (dir) {
+      countEl.classList.remove('up', 'dn');
+      void countEl.offsetWidth;
+      countEl.classList.add(dir > 0 ? 'up' : 'dn');
+    }
+    try { parent !== window && parent.postMessage({ source: 'obs-counter', type: 'state', count, done }, '*'); } catch (e) {}
+  }
+
+  function set(next, dir) {
+    const before = count;
+    count = next;
+    store.set(count);
+    render(dir);
+    if (cfg.fx && cfg.goal && before < cfg.goal && count >= cfg.goal) celebrate();
+  }
+  const inc = () => set(count + cfg.step, 1);
+  const dec = () => set(count - cfg.step, -1);
+  const reset = () => { set(cfg.start, -1); toast('リセットしました'); };
+
+  // ---- 操作：OBSの「対話」ウィンドウでキー・クリック ----
+  let resetArmed = 0;
+  addEventListener('keydown', (e) => {
+    if (['ArrowUp', ' ', '+', '=', 'Enter'].includes(e.key)) { e.preventDefault(); inc(); }
+    else if (['ArrowDown', '-', 'Backspace'].includes(e.key)) { e.preventDefault(); dec(); }
+    else if (e.key === 'r' || e.key === 'R') {
+      const now = Date.now();
+      if (now - resetArmed < 1500) { resetArmed = 0; reset(); }
+      else { resetArmed = now; toast('もう一度 R でリセット'); }
+    }
+  });
+  addEventListener('mousedown', (e) => { if (e.button === 0) inc(); else if (e.button === 2) dec(); });
+  addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // ---- 外部からの操作（設定画面のプレビュー用） ----
+  addEventListener('message', (e) => {
+    const m = e.data;
+    if (!m || m.source !== 'obs-counter') return;
+    if (m.action === 'inc') inc();
+    else if (m.action === 'dec') dec();
+    else if (m.action === 'reset') reset();
+    else if (m.action === 'set' && Number.isFinite(m.value)) set(m.value, m.value >= count ? 1 : -1);
+  });
+  // 同じ id のカウンターを複数開いている場合に同期
+  addEventListener('storage', (e) => {
+    if (e.key !== KEY || e.newValue === null) return;
+    const v = parseInt(e.newValue, 10);
+    if (Number.isFinite(v) && v !== count) { const d = v - count; count = v; render(d); }
+  });
+  
+  // ---- 操作パネル（panel.html / OBSドック）からの操作 ----
+  try { localStorage.setItem('obs-counter-meta:' + cfg.id, JSON.stringify({ label: cfg.label, unit: cfg.unit, goal: cfg.goal, t: Date.now() })); } catch (e) {}
+  addEventListener('storage', (e) => {
+    if (e.key !== 'obs-counter-cmd:' + cfg.id || !e.newValue) return;
+    let m; try { m = JSON.parse(e.newValue); } catch (err) { return; }
+    if (m.action === 'inc') inc();
+    else if (m.action === 'dec') dec();
+    else if (m.action === 'reset') reset();
+  });
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1400);
+  }
+
+  // ---- 達成演出（紙吹雪） ----
+  const cv = $('fx'), ctx = cv.getContext('2d');
+  let parts = [], raf = 0;
+  function celebrate() {
+    cv.width = innerWidth; cv.height = innerHeight;
+    const r = wrap.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff5fa2';
+    const colors = [accent, '#ffd400', '#ffffff', '#7df9ff', '#ff8fc7'];
+    for (let i = 0; i < 140; i++) {
+      const a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 9;
+      parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, w: 6 + Math.random() * 6, h: 3 + Math.random() * 4,
+        rot: Math.random() * 6, vr: (Math.random() - .5) * .4, c: colors[i % colors.length], life: 1 });
+    }
+    if (!raf) raf = requestAnimationFrame(tick);
+  }
+  function tick() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    parts = parts.filter((p) => p.life > 0 && p.y < cv.height + 20);
+    for (const p of parts) {
+      p.vy += .25; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= .006;
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.life); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    }
+    raf = parts.length ? requestAnimationFrame(tick) : 0;
+  }
+
+  render(0);
+})();
+</script>
+</body>
+</html>

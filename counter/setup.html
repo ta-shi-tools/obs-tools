@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>なんでも目標カウンター 設定</title>
+<style>
+  :root { --bg: #f6f5fa; --card: #fff; --fg: #222; --muted: #666; --line: #ddd; --accent: #ff5fa2; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #16161c; --card: #22222a; --fg: #eee; --muted: #aaa; --line: #3a3a44; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 "BIZ UDPGothic", "Meiryo", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  label { display: block; font-weight: 700; font-size: 13px; margin: 12px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+  input[type=color] { padding: 2px; height: 38px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .check { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+  .check input { width: auto; }
+  iframe { width: 100%; height: 260px; border: 0; border-radius: 8px; display: block; }
+  .ctrl { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  textarea { width: 100%; height: 88px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: 12px/1.5 Consolas, monospace; resize: vertical; }
+  .note { font-size: 13px; color: var(--muted); }
+  ol { padding-left: 1.3em; margin: 8px 0 0; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>なんでも目標カウンター 設定</h1>
+  <p class="lead">設定を変えるとプレビューに反映されます。最後に表示されたURLをOBSに貼り付けてください。</p>
+
+  <div class="grid">
+    <form class="card" id="form" onsubmit="return false">
+      <label for="label">見出し</label>
+      <input id="label" value="クリア回数">
+      <div class="two">
+        <div><label for="goal">目標（0で目標なし）</label><input id="goal" type="number" min="0" value="10"></div>
+        <div><label for="unit">単位</label><input id="unit" value="回"></div>
+      </div>
+      <div class="two">
+        <div><label for="start">開始値</label><input id="start" type="number" value="0"></div>
+        <div><label for="step">1回の増減</label><input id="step" type="number" min="1" value="1"></div>
+      </div>
+      <div class="two">
+        <div><label for="theme">デザイン</label>
+          <select id="theme">
+            <option value="pop">ポップ</option>
+            <option value="simple">シンプル（枠なし）</option>
+            <option value="neon">ネオン</option>
+            <option value="dark">ダーク</option>
+          </select></div>
+        <div><label for="size">文字サイズ(px)</label><input id="size" type="number" min="12" max="200" value="32"></div>
+      </div>
+      <label for="color">アクセント色</label>
+      <div class="two">
+        <input id="color" type="color" value="#ff5fa2">
+        <label class="check"><input id="usecolor" type="checkbox"> デザインの色を上書き</label>
+      </div>
+      <label for="cid">カウンターID（複数置くときは別のIDに）</label>
+      <input id="cid" value="counter1">
+      <label class="check"><input id="fx" type="checkbox" checked> 目標達成時に紙吹雪</label>
+      
+    </form>
+
+    <div>
+      <div class="card">
+        <iframe id="pv" title="プレビュー"></iframe>
+        <div class="ctrl">
+          <button type="button" data-a="inc">＋1</button>
+          <button type="button" data-a="dec">－1</button>
+          <button type="button" data-a="reset">リセット</button>
+        </div>
+        <p class="note">プレビューの数値は本番とは別に保存されます。</p>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <label for="url">OBS用URL</label>
+        <textarea id="url" readonly></textarea>
+        <div class="ctrl"><button type="button" class="primary" id="copy">URLをコピー</button><span class="note" id="copied"></span></div>
+        <ol class="note">
+          <li>OBSの「ソース」で「＋」→「ブラウザ」を追加</li>
+          <li>「ローカルファイル」のチェックは<b>外したまま</b>、URL欄に上のURLを貼り付け</li>
+          <li>幅 800／高さ 400 程度にして「OK」</li>
+          <li>操作はソースを右クリック→「対話」。<kbd>↑</kbd><kbd>Space</kbd>で＋、<kbd>↓</kbd>で－、<kbd>R</kbd>を2回でリセット。左クリックで＋、右クリックで－</li>
+        </ol>
+      </div>
+      
+      <div class="card" style="margin-top:20px">
+        <label for="purl">操作パネル（OBSドック）用URL</label>
+        <textarea id="purl" readonly style="height:56px"></textarea>
+        <div class="ctrl"><button type="button" id="pcopy">URLをコピー</button><span class="note" id="pcopied"></span></div>
+        <ol class="note">
+          <li>OBSのメニュー「ドック」→「カスタムブラウザドック」</li>
+          <li>名前に「カウンター」、URLに上のURLを貼り付けて「適用」</li>
+          <li>表示中のカウンターが自動で一覧に出ます。＋／－をクリックするだけで操作できます（対話ウィンドウは不要）</li>
+        </ol>
+      </div>
+      
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const base = new URL('counter.html', location.href).href;
+  const pv = $('pv');
+
+  function params(preview) {
+    const p = new URLSearchParams();
+    p.set('label', $('label').value);
+    p.set('unit', $('unit').value);
+    p.set('goal', $('goal').value || '0');
+    p.set('start', $('start').value || '0');
+    p.set('step', $('step').value || '1');
+    p.set('theme', $('theme').value);
+    p.set('size', $('size').value || '32');
+    if ($('usecolor').checked) p.set('color', $('color').value.slice(1));
+    if (!$('fx').checked) p.set('fx', '0');
+    p.set('id', preview ? 'preview-' + ($('cid').value || 'counter1') : ($('cid').value || 'counter1'));
+    if (preview) p.set('preview', '1');
+    return p.toString();
+  }
+
+  let timer;
+  function update() {
+    $('url').value = base + '?' + params(false);
+    clearTimeout(timer);
+    timer = setTimeout(() => { pv.src = base + '?' + params(true); }, 250);
+  }
+
+  $('form').addEventListener('input', update);
+  document.querySelectorAll('[data-a]').forEach((b) =>
+    b.addEventListener('click', () => pv.contentWindow.postMessage({ source: 'obs-counter', action: b.dataset.a }, '*')));
+  $('copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('url').value); $('copied').textContent = 'コピーしました'; }
+    catch (e) { $('url').select(); document.execCommand('copy'); $('copied').textContent = 'コピーしました'; }
+    setTimeout(() => ($('copied').textContent = ''), 1500);
+  });
+  
+  $('purl').value = new URL('panel.html', location.href).href;
+  $('pcopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('purl').value); } catch (e) { $('purl').select(); document.execCommand('copy'); }
+    $('pcopied').textContent = 'コピーしました';
+    setTimeout(() => ($('pcopied').textContent = ''), 1500);
+  });
+  
+  update();
+})();
+</script>
+</body>
+</html>

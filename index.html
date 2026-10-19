@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>無料のOBS配信ツール｜目標カウンター・勝敗カウンター・雀魂段位pt</title>
+<meta name="description" content="ダウンロード不要。URLをOBSのブラウザソースに貼るだけで使える、無料の配信用カウンター。耐久・目標企画、ランクマの勝敗、雀魂の段位ptに。">
+<meta property="og:title" content="無料のOBS配信ツール｜URLを貼るだけで使える">
+<meta property="og:description" content="耐久・目標カウンター、ランクマ勝敗カウンター、雀魂段位ptカウンター。ダウンロード不要・インストール不要。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://ta-shi-tools.github.io/obs-tools/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root { --bg: #f6f5fa; --card: #fff; --fg: #1f1d24; --muted: #5f5b69; --line: #e2dfe8; --accent: #e0457b; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15141a; --card: #201f27; --fg: #eeeef2; --muted: #a9a6b3; --line: #33313d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.7 "BIZ UDPGothic", "Hiragino Sans", "Meiryo", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 56px; }
+  h1 { font-size: clamp(26px, 5vw, 40px); line-height: 1.25; margin: 0 0 10px; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lead { color: var(--muted); margin: 0 0 8px; }
+  .points { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 28px; padding: 0; list-style: none; }
+  .points li { padding: 4px 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); font-size: 14px; font-weight: 700; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .card img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+  .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .body h2 { font-size: 19px; margin: 0; }
+  .body p { margin: 0; color: var(--muted); font-size: 14px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+  a.btn { display: inline-block; padding: 9px 14px; border-radius: 9px; font-weight: 800; font-size: 14px; text-decoration: none; border: 1px solid var(--line); color: var(--fg); }
+  a.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  section.how { margin-top: 36px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  section.how h2 { margin: 0 0 8px; font-size: 20px; }
+  ol { margin: 0; padding-left: 1.3em; }
+  .paid { margin-top: 18px; padding: 14px 18px; border-radius: 12px; border: 1px dashed var(--accent); }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>URLを貼るだけ。<br><em>無料のOBS配信ツール</em></h1>
+  <p class="lead">耐久・目標企画、ランクマの勝敗、雀魂の段位ptを配信画面に表示するカウンターです。</p>
+  <ul class="points"><li>ダウンロード不要</li><li>インストール不要</li><li>完全無料</li><li>数値は自動保存</li></ul>
+
+  <div class="grid">
+    <article class="card">
+      <img src="img-counter.jpg" alt="なんでも目標カウンターの表示例" loading="lazy">
+      <div class="body">
+        <h2>なんでも目標カウンター</h2>
+        <p>耐久配信・目標企画・デス数などを数えて表示。OBSのドックからワンクリックで＋／－。目標達成で紙吹雪。</p>
+        <div class="btns"><a class="btn primary" href="counter/setup.html">設定してURLを作る</a><a class="btn" href="https://ta-shi.booth.pm/items/8998359">BOOTHで入手</a></div>
+      </div>
+    </article>
+    <article class="card">
+      <img src="img-rank.jpg" alt="ランクマ戦績カウンターの表示例" loading="lazy">
+      <div class="body">
+        <h2>ランクマ戦績カウンター（無償版）</h2>
+        <p>今日の勝敗・勝率・連勝・直近の勝敗・通算成績。格ゲー・FPSなど、どのゲームでも使えます。</p>
+        <div class="btns"><a class="btn primary" href="rank/setup.html">設定してURLを作る</a><a class="btn" href="https://ta-shi.booth.pm/items/9010808">BOOTHで入手</a></div>
+      </div>
+    </article>
+    <article class="card">
+      <img src="img-mahjong.jpg" alt="雀魂 段位ptカウンターの表示例" loading="lazy">
+      <div class="body">
+        <h2>雀魂 段位ptカウンター（四麻）</h2>
+        <p>終局点と着順を入れるだけで段位ptを自動計算。昇段・降段も自動で反映。※非公式のファンメイドツールです。</p>
+        <div class="btns"><a class="btn primary" href="mahjong/setup.html">設定してURLを作る</a><a class="btn" href="https://ta-shi.booth.pm/items/9010783">BOOTHで入手</a></div>
+      </div>
+    </article>
+  </div>
+
+  <section class="how">
+    <h2>使い方（ダウンロードせずに使う場合）</h2>
+    <ol>
+      <li>上の「設定してURLを作る」を開き、見出しやデザインを選ぶ</li>
+      <li>表示されたURLをコピーし、OBSの「ソース」→「＋」→「ブラウザ」のURL欄に貼る</li>
+      <li>操作パネルがあるツールは、パネル用URLを「ドック」→「カスタムブラウザドック」に貼る</li>
+    </ol>
+    <p style="margin:10px 0 0;color:var(--muted);font-size:14px">インターネットにつながらない環境で使いたい場合や、手元にファイルを置きたい場合は、BOOTHからZIPをダウンロードできます（無料）。</p>
+    <div class="paid">ランクマ戦績カウンターには、OBSのドックから「勝ち」「負け」をワンクリックで記録できる操作パネル、キャラ別戦績、勝ち越し目標ゲージ付きの<a href="https://ta-shi.booth.pm/items/8998369">有償版（300円）</a>もあります。</div>
+  </section>
+
+  <footer>
+    動作確認環境：Windows 10 / OBS Studio 32.2.2。配信・動画での利用は商用・収益化を含め自由です。<br>
+    「雀魂 段位ptカウンター」は非公式のファンメイドツールで、雀魂の運営会社とは関係ありません。<br>
+    作者のショップ：<a href="https://ta-shi.booth.pm/">ta-shi（BOOTH）</a>
+  </footer>
+</main>
+</body>
+</html>

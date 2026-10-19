@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>段位ポイントカウンター</title>
+<style>
+  :root {
+    --size: 28px;
+    --fg: #2f2a35; --sub: #c0392b; --accent: #d4a017; --bar: #e6b422;
+    --track: rgba(0, 0, 0, .1); --panel: rgba(255, 252, 245, .94);
+    --border: 3px solid #c9a227; --glow: none; --plus: #2e8b57; --minus: #c0392b;
+    --radius: .55em;
+    --font: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Meiryo", sans-serif;
+  }
+  
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font-family: var(--font); color: var(--fg); user-select: none; }
+  body.preview-bg { background: #2d5a3d repeating-linear-gradient(45deg, #2f5f40 0 12px, #2b5539 12px 24px); min-height: 100vh; }
+  .wrap { display: inline-flex; flex-direction: column; gap: .25em; margin: 16px; padding: .5em .85em .6em; min-width: 10em;
+    font-size: var(--size); background: var(--panel); border: var(--border); border-radius: var(--radius); text-shadow: var(--glow); }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; font-size: .5em; font-weight: 800; color: var(--sub); white-space: nowrap; }
+  .rank { font-size: 1.5em; font-weight: 900; line-height: 1.1; white-space: nowrap; display: flex; align-items: baseline; gap: .35em; }
+  .pt { font-size: .55em; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .bar { height: .3em; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--bar); border-radius: inherit; transition: width .5s cubic-bezier(.2, .8, .2, 1); }
+  .places { display: flex; gap: .7em; font-size: .55em; font-weight: 800; white-space: nowrap; }
+  .places b { font-size: 1.3em; }
+  .sub2 { font-size: .5em; font-weight: 700; opacity: .9; white-space: nowrap; }
+  .plus { color: var(--plus); } .minus { color: var(--minus); }
+  .banner { position: fixed; left: 16px; top: 16px; padding: .2em .6em; border-radius: .3em; font: 900 40px var(--font);
+    color: #fff; background: #c0392b; opacity: 0; transform: scale(.6); transition: all .25s; pointer-events: none; }
+  .banner.up { background: linear-gradient(90deg, #d4a017, #ff7a00); }
+  .banner.show { opacity: 1; transform: scale(1); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="head"><span id="label"></span><span id="mode"></span></div>
+  <div class="rank"><span id="rank">-</span><span class="pt" id="pt"></span></div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  
+</div>
+
+<script src="rules.js"></script>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const int = (k, d) => { const n = parseInt(q.get(k), 10); return Number.isFinite(n) ? n : d; };
+  const cfg = {
+    id: q.get('id') || 'mj1',
+    label: q.get('label') ?? '雀魂 段位戦',
+    theme: q.get('theme') || 'pop',
+    size: Math.min(200, Math.max(12, int('size', 28))),
+    preview: q.get('preview') === '1',
+  };
+  
+  cfg.theme = 'pop'; // 無償版はデザイン1種
+  
+  document.documentElement.dataset.theme = cfg.theme;
+  document.documentElement.style.setProperty('--size', cfg.size + 'px');
+  if (cfg.preview) document.body.classList.add('preview-bg');
+  const $ = (id) => document.getElementById(id);
+  $('label').textContent = cfg.label;
+
+  const KEY = 'mj-counter:' + cfg.id;
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
+  try { localStorage.setItem('mj-counter-meta:' + cfg.id, JSON.stringify({ label: cfg.label, t: Date.now() })); } catch (e) {}
+
+  const sign = (n) => (n > 0 ? '+' + n : String(n));
+  let lastCount = -1;
+  function render() {
+    const d = load();
+    if (!d) { $('rank').textContent = '未設定'; $('pt').textContent = ''; return; }
+    
+    d.players = 4; // 無償版は四麻のみ
+    
+    const max = MJ.MAX_POINTS[d.rank];
+    $('rank').textContent = MJ.RANK_NAMES[d.rank];
+    $('pt').textContent = `${d.pt} / ${max}`;
+    $('fill').style.width = Math.min(100, Math.max(0, d.pt / max * 100)) + '%';
+    $('mode').textContent = `${d.players === 3 ? '三麻' : '四麻'}・${MJ.TABLE_NAMES[d.table]}・${d.length === 'tonpu' ? '東風' : '半荘'}`;
+
+  }
+  addEventListener('storage', (e) => { if (e.key === KEY) render(); });
+  addEventListener('message', (e) => { if (e.data && e.data.source === 'mj-counter' && e.data.action === 'render') render(); });
+  render();
+})();
+</script>
+</body>
+</html>

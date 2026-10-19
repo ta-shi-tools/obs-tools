@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ランクマ戦績カウンター</title>
+<style>
+  :root {
+    --size: 28px;
+    --fg: #3a2f3a; --sub: #ff5fa2; --accent: #ff5fa2;
+    --win: #ff5fa2; --lose: #8a8aa0;
+    --track: rgba(255, 95, 162, .18);
+    --panel: rgba(255, 255, 255, .93);
+    --border: 3px solid var(--accent);
+    --glow: none;
+    --radius: .6em;
+    --font: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Meiryo", sans-serif;
+  }
+  
+  [data-theme="simple"] {
+    --fg: #fff; --sub: #fff; --accent: #ffd400; --win: #ffd400; --lose: #cfcfcf;
+    --track: rgba(255, 255, 255, .3); --panel: transparent; --border: none;
+    --glow: 0 0 2px #000, 0 0 2px #000, 0 0 2px #000, 0 2px 4px rgba(0, 0, 0, .6);
+  }
+
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font-family: var(--font); color: var(--fg); user-select: none; }
+  body.preview-bg { background: #444 repeating-conic-gradient(#555 0 25%, #444 0 50%) 0 0 / 24px 24px; min-height: 100vh; }
+
+  .wrap {
+    display: inline-flex; flex-direction: column; gap: .28em;
+    margin: 16px; padding: .5em .85em .6em; min-width: 9em;
+    font-size: var(--size); background: var(--panel); border: var(--border); border-radius: var(--radius);
+    text-shadow: var(--glow);
+  }
+  .head { display: flex; justify-content: space-between; gap: .8em; font-size: .55em; font-weight: 800; color: var(--sub); white-space: nowrap; }
+  .char { color: var(--fg); opacity: .85; }
+  .main { display: flex; align-items: baseline; gap: .3em; white-space: nowrap; font-weight: 900; }
+  .num { font-size: 1.7em; line-height: 1; font-variant-numeric: tabular-nums; display: inline-block; }
+  .w { color: var(--win); }
+  .unit { font-size: .7em; font-weight: 800; }
+  .rate { margin-left: .4em; font-size: .8em; font-weight: 800; opacity: .9; }
+  .streak { font-size: .55em; font-weight: 800; white-space: nowrap; }
+  .streak b { color: var(--win); font-size: 1.25em; }
+  .streak.lose b { color: var(--lose); }
+  .dots { display: flex; gap: .18em; flex-wrap: nowrap; }
+  .dot { width: .42em; height: .42em; border-radius: 50%; border: .07em solid var(--win); box-sizing: border-box; }
+  .dot.win { background: var(--win); }
+  .dot.lose { border-color: var(--lose); background: transparent; }
+  .sub2 { font-size: .5em; font-weight: 700; opacity: .85; white-space: nowrap; }
+  .bar { height: .28em; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .45s cubic-bezier(.2, .8, .2, 1); }
+  .hidden { display: none !important; }
+  .pop { animation: pop .35s ease-out; }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="head"><span id="label"></span><span class="char" id="char"></span></div>
+  <div class="main">
+    <span><span class="num w" id="wins">0</span><span class="unit">勝</span></span>
+    <span><span class="num" id="losses">0</span><span class="unit">敗</span></span>
+    <span class="rate" id="rate"></span>
+  </div>
+  <div class="streak" id="streak"></div>
+  <div class="dots" id="dots"></div>
+  <div class="bar hidden" id="bar"><div class="fill" id="fill"></div></div>
+  <div class="sub2" id="goal"></div>
+  <div class="sub2" id="total"></div>
+</div>
+
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const int = (k, d) => { const n = parseInt(q.get(k), 10); return Number.isFinite(n) ? n : d; };
+  const cfg = {
+    id: q.get('id') || 'rank1',
+    label: q.get('label') ?? '今日の戦績',
+    theme: q.get('theme') || 'pop',
+    size: Math.min(200, Math.max(12, int('size', 28))),
+    color: /^[0-9a-fA-F]{3,8}$/.test(q.get('color') || '') ? '#' + q.get('color') : null,
+    history: Math.min(30, Math.max(0, int('history', 10))),
+    goal: Math.max(0, int('goal', 0)),      // 勝ち越し目標（0で非表示）
+    total: q.get('total') !== '0',          // 通算を表示
+    char: q.get('char') !== '0',            // 使用キャラを表示
+    preview: q.get('preview') === '1',
+  };
+  
+  // 無償版：勝ち越し目標・キャラ表示・色変更・ネオン/ダークは有償版のみ
+  cfg.goal = 0; cfg.char = false; cfg.color = null;
+  if (cfg.theme !== 'pop' && cfg.theme !== 'simple') cfg.theme = 'pop';
+  
+  const root = document.documentElement;
+  root.dataset.theme = cfg.theme;
+  root.style.setProperty('--size', cfg.size + 'px');
+  if (cfg.color) { root.style.setProperty('--accent', cfg.color); root.style.setProperty('--win', cfg.color); }
+  if (cfg.preview) document.body.classList.add('preview-bg');
+  const $ = (id) => document.getElementById(id);
+  $('label').textContent = cfg.label;
+
+  // ---- データ（panel.html と共通の形式） ----
+  const KEY = 'rank-tracker:' + cfg.id;
+  const blank = () => ({ v: 1, chars: [], current: '', matches: [], sessionStart: Date.now() });
+  function load() {
+    try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && Array.isArray(d.matches)) return d; } catch (e) {}
+    return blank();
+  }
+  function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
+
+  function stats(d) {
+    const all = d.matches;
+    const ses = all.filter((m) => m.t >= d.sessionStart);
+    const wl = (arr) => { const w = arr.filter((m) => m.win).length; return { w, l: arr.length - w }; };
+    let streak = 0;
+    for (let i = all.length - 1; i >= 0; i--) {
+      const s = all[i].win ? 1 : -1;
+      if (streak === 0 || Math.sign(streak) === s) streak += s; else break;
+    }
+    let best = 0, run = 0;
+    for (const m of all) { run = m.win ? run + 1 : 0; if (run > best) best = run; }
+    const charSes = d.current ? wl(ses.filter((m) => m.char === d.current)) : null;
+    return { ses: wl(ses), total: wl(all), streak, best, recent: ses.slice(-cfg.history), charSes };
+  }
+  const pct = (w, l) => (w + l ? Math.round(w / (w + l) * 100) + '%' : '－');
+
+  let last = null;
+  function render() {
+    const d = load(), s = stats(d);
+    const changed = last && (last.w !== s.ses.w || last.l !== s.ses.l);
+    $('wins').textContent = s.ses.w;
+    $('losses').textContent = s.ses.l;
+    $('rate').textContent = '勝率 ' + pct(s.ses.w, s.ses.l);
+    if (changed) {
+      const el = last.w !== s.ses.w ? $('wins') : $('losses');
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    }
+    last = { ...s.ses };
+
+    const st = $('streak');
+    st.classList.toggle('lose', s.streak < 0);
+    st.innerHTML = s.streak > 0 ? `<b>${s.streak}</b> 連勝中　最高 ${s.best}連勝`
+      : s.streak < 0 ? `<b>${-s.streak}</b> 連敗中　最高 ${s.best}連勝`
+      : `最高 ${s.best}連勝`;
+
+    $('char').classList.toggle('hidden', !(cfg.char && d.current));
+    if (cfg.char && d.current) {
+      $('char').textContent = d.current + (s.charSes ? `  ${s.charSes.w}-${s.charSes.l}` : '');
+    }
+
+    const dots = $('dots');
+    dots.classList.toggle('hidden', !cfg.history);
+    dots.innerHTML = '';
+    for (const m of s.recent) { const i = document.createElement('i'); i.className = 'dot ' + (m.win ? 'win' : 'lose'); dots.appendChild(i); }
+
+    $('bar').classList.toggle('hidden', !cfg.goal);
+    $('goal').classList.toggle('hidden', !cfg.goal);
+    if (cfg.goal) {
+      const diff = s.ses.w - s.ses.l;
+      $('fill').style.width = Math.min(100, Math.max(0, diff / cfg.goal * 100)) + '%';
+      $('goal').textContent = diff >= cfg.goal ? `★ 勝ち越し +${cfg.goal} 達成！` : `勝ち越し目標 ${diff >= 0 ? '+' : ''}${diff} / +${cfg.goal}`;
+    }
+
+    $('total').classList.toggle('hidden', !cfg.total);
+    if (cfg.total) $('total').textContent = `通算 ${s.total.w}勝 ${s.total.l}敗（${pct(s.total.w, s.total.l)}）`;
+
+    try { parent !== window && parent.postMessage({ source: 'rank-tracker', type: 'state', ses: s.ses, total: s.total, streak: s.streak, best: s.best }, '*'); } catch (e) {}
+  }
+
+  // ---- 記録操作（OBSの対話ウィンドウ・設定画面のプレビュー用） ----
+  function record(win) { const d = load(); d.matches.push({ t: Date.now(), win, char: d.current || '' }); if (d.matches.length > 5000) d.matches.shift(); save(d); render(); }
+  function undo() { const d = load(); d.matches.pop(); save(d); render(); }
+  let newDayArmed = 0;
+  addEventListener('keydown', (e) => {
+    if (e.key === 'n' || e.key === 'N') {
+      // 誤操作防止：1.5秒以内に2回押すと「新しい日」（今日の戦績を0に。通算は残る）
+      const now = Date.now();
+      if (now - newDayArmed < 1500) { newDayArmed = 0; const d = load(); d.sessionStart = now; save(d); render(); }
+      else newDayArmed = now;
+    }
+    else if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') record(true);
+    else if (e.key === 'l' || e.key === 'L' || e.key === 'ArrowDown') record(false);
+    else if ((e.ctrlKey && e.key === 'z') || e.key === 'Backspace') undo();
+  });
+  addEventListener('message', (e) => {
+    const m = e.data;
+    if (!m || m.source !== 'rank-tracker') return;
+    if (m.action === 'win') record(true);
+    else if (m.action === 'lose') record(false);
+    else if (m.action === 'undo') undo();
+  });
+  addEventListener('storage', (e) => { if (e.key === KEY) render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
